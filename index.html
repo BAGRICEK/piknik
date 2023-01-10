@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html> 
+  <head>
+    <title>Ročníková práce</title> 
+    <style type="text/css">
+        #canvas {
+            border: 2px solid black;
+            margin-left: auto;
+            margin-right: auto;
+            display: block;
+            width: 50%;
+            height: width*10;
+        }
+        .div {
+            margin-left: auto;
+            margin-right: auto;
+            width: 50%;
+            min-height: 50px;
+            height: auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-family: Banschrift
+        }
+
+        h2 {
+            text-align: center;
+            font-family: Banschrift
+        }
+
+        button {
+            width: 45%;
+            height: 60px;
+            border-radius: 20px;
+            border: 2px solid black;
+            font-size: 20px;
+            font-family: Banschrift;
+        }
+
+        #levyButton {
+            float: left;
+        }
+
+        #pravyButton {
+            float: right;
+        }
+
+    </style>
+  </head>
+  <body>
+    <div class="div"><h1>Scóre: <span id="score">0</span></h1></div>
+    <canvas id="canvas"></canvas>
+    <div class="div">
+        <h1 id="otazka">Otazka</h1><h1>Zbývající čas: <span id="seconds">10</span> vteřin</h1>
+        <button id="levyButton" onclick="leva()">Odpoved1</button>
+        <button id="pravyButton" onclick="prava()">Odpoved2</button>
+    </div> 
+  </body>
+  <script src="https://cdn.jsdelivr.net/processing.js/1.4.8/processing.min.js"></script> 
+  <script>
+  var programCode = function(processingInstance) {
+    with (processingInstance) {
+    size(800, 500);
+    frameRate(60);
+        
+        //objekt Postav
+        var Postava = function(x, y) {
+          this.x = x;
+          this.y = y;
+        };
+
+        //funkce nakreslení Postavy
+        Postava.prototype.draw = function() {
+            this.y = constrain(this.y, 0, height*0.85 - 50);
+            fill(255, 213, 0);
+            rect(this.x, this.y, 50, 50);
+            fill(255, 255, 255);
+            rect(this.x + 30, this.y + 5, 15, 15);
+            rect(this.x + 5, this.y + 5, 15, 15);
+            fill(0, 0, 0);
+            rect(this.x + 35, this.y + 10, 4, 4);
+            rect(this.x + 10, this.y + 10, 4, 4);
+            fill(255, 0, 0);
+            rect(this.x + 5, this.y + 30, 40, 12);
+            fill(255, 255, 255);
+            rect(this.x + 20, this.y + 30, 5, 5);
+            rect(this.x + 25, this.y + 30, 5, 5);
+        };
+        //funkce skoku
+        Postava.prototype.skok = function() {
+            this.y -= 2 * 20.0;
+        };
+        //funkce padu
+        Postava.prototype.pad = function() {
+            this.y += 1 * 1.5;
+        };
+        //kolize s prekazkami
+        Postava.prototype.nabourani = function(prekazka) {
+            if( //naraz do vrchni prekazky kolmo
+                ((this.x + 50 === prekazka.x) && (this.y <= prekazka.height))||
+                //naraz do vrchni prekazky
+                ((this.x + 50 >= prekazka.x) && (this.x <= prekazka.x + 40) && 
+                (this.y <= prekazka.height))||
+                //naraz do spodni prekazky kolmo
+                ((this.x + 50 === prekazka.x) && (this.y + 50 >= height*0.85 + prekazka.height))||
+                //naraz do spodni prekazky
+                ((this.x + 50 >= prekazka.x) && (this.x <= prekazka.x + 40) && 
+                (this.y + 50 >= height*0.85 + prekazka.height))) 
+            {
+                prekazka.y = -2*width;
+                prekazka.height = -2*height;
+                window.location.reload();
+            }
+        };
+        //objekt prekazek
+        var Prekazka = function(x, y, height) {
+            this.x = x;
+            this.y = y;
+            this.height = height;
+        };
+        //funkce kresleni prekazek
+        Prekazka.prototype.draw = function() {
+            fill(130, 30, 176);
+            rect(this.x, this.y, 40, this.height);
+            if (this.height > 0){
+                rect(this.x - 3, this.height - 10, 45, 10);
+                rect(this.x - 3, this.y, 45, 10);
+            }
+            else {
+                rect(this.x - 3, this.height + height*0.85, 45, 10);
+                rect(this.x - 3, this.y - 10, 45, 10);
+            }
+        };
+
+        //deklarace naší herní postavy (Bob)
+        var Bob = new Postava(40, 280);
+
+        //deklarace pole travičky
+        var travicka = [];
+        for (var i = 0; i < (width/20) + 1; i++) {
+            travicka.push(i*20);
+        }
+        
+        //deklarace pole prekazek
+        var prekazka = [];
+        for (var i = 0; i < 95; i++) {  
+            var delka = random(height*0.2, height*0.5);
+            prekazka.push(new Prekazka(i * 150 + 400, 0, delka));
+            prekazka.push(new Prekazka(i * 150 + 400, height*0.85, delka - height*0.5));
+        }
+
+        //nakreslení statického a dynamického pozadí
+        draw = function() {
+            
+            //obloha
+            background(227, 254, 255);
+            //mrak
+            fill(255, 255, 255);
+            ellipse(200, 100, 50, 50);
+            ellipse(235, 100, 50, 50);
+            ellipse(270, 100, 50, 50);
+            ellipse(305, 100, 50, 50);
+            noStroke();
+            rect(206, 82, 88, 36);
+            stroke(0, 0, 0);
+            //slunce
+            fill(255, 250, 94);
+            ellipse(0, 0, 200, 200);
+            //země
+            fill(130, 79, 43);
+            rect(0, height*0.85, width, height*0.15);
+            
+            //dynamicky se posouvající travička (podle rozměrů plátna)
+            for (var i = 0; i < travicka.length; i++) {
+                fill(67, 186, 79);
+                rect(travicka[i], height*0.85, 20, 20);
+                travicka[i] -= 2;
+                if (travicka[i] <= -20) {travicka[i] = width;}
+            }
+            
+            //generovani prekazek nahodne velikosti
+            for (var i = 0; i < prekazka.length; i++) {
+                prekazka[i].draw();
+                prekazka[i].x -= 2;
+                Bob.nabourani(prekazka[i]);
+            }
+            //ovládací prvky
+            mouseClicked = function() {
+                Bob.skok();
+            };
+            
+            keyPressed = function() {
+                Bob.skok();
+            };
+            
+            Bob.pad();
+            Bob.draw();
+        };
+
+
+
+    }};
+    var canvas = document.getElementById("canvas"); 
+    var Otazka = function(otazka, moznost1, moznost2, kteraJeSpravna) {
+            this.otazka = otazka;
+            this.moznost1 = moznost1;
+            this.moznost2 = moznost2;
+            this.kteraJeSpravna = kteraJeSpravna;
+        };
+
+    var poleOtazek = [];
+        poleOtazek.push(new Otazka("Kolik je 2 + 2","22","4","prava"));
+        poleOtazek.push(new Otazka("Kolik je 3 * 3","9","3","leva"));
+        poleOtazek.push(new Otazka("Kolik je 2 / 2","5","1","prava"));
+        poleOtazek.push(new Otazka("Kolik je 5^2","10","25","prava"));
+        poleOtazek.push(new Otazka("Kolik je 4^0,5","2","20","leva"));
+    var seconds = document.getElementById("seconds");
+    var currentTime;
+    var countUp = function() {
+                currentTime = parseFloat(seconds.textContent);
+                seconds.textContent = currentTime - 1;
+                if (seconds.textContent === "-1") {
+                    alert('Nestihl jsi odpovědět, konečné score: ' + scoreEl.textContent);
+                    window.location.reload();
+                }
+            };
+    var secondsTimer = window.setInterval(countUp, 1000);
+
+    var scoreEl = document.getElementById("score");
+    var currentScore;
+    var scoreUp = function() {
+        currentScore = parseFloat(scoreEl.textContent);
+        scoreEl.textContent = currentScore + 1;
+    };
+    var scoreTimer = window.setInterval(scoreUp, 100);
+
+    var otazkaEl = document.getElementById("otazka");
+    var levyButtonEl = document.getElementById("levyButton");
+    var pravyButtonEl = document.getElementById("pravyButton");
+
+        otazkaEl.textContent = poleOtazek[0].otazka;
+        levyButtonEl.textContent = poleOtazek[0].moznost1;
+        pravyButtonEl.textContent = poleOtazek[0].moznost2;
+        
+    var i = 0;  
+    function leva() {
+        
+        if (poleOtazek[0+i].kteraJeSpravna === "leva") {
+            otazkaEl.textContent = poleOtazek[1+i].otazka;
+            levyButtonEl.textContent = poleOtazek[1+i].moznost1;
+            pravyButtonEl.textContent = poleOtazek[1+i].moznost2;  
+            seconds.textContent = "10";
+        }   else{
+            levyButtonEl.textContent = "Spatne";
+            levyButtonEl.style.backgroundColor = "red";
+            alert('Špatná odpověď, konečné score: ' + scoreEl.textContent);
+            window.location.reload();
+        }
+        i = i + 1;
+    }
+
+    function prava() {
+        
+        if (poleOtazek[0+i].kteraJeSpravna === "prava") {
+            otazkaEl.textContent = poleOtazek[1+i].otazka;
+            levyButtonEl.textContent = poleOtazek[1+i].moznost1;
+            pravyButtonEl.textContent = poleOtazek[1+i].moznost2;  
+            seconds.textContent = "10";
+        }   else{
+            pravyButtonEl.textContent = "Spatne";
+            pravyButtonEl.style.backgroundColor = "red";
+            alert('Špatná odpověď, konečné score: ' + scoreEl.textContent);
+            window.location.reload();
+        }
+        i = i + 1;
+    }
+    
+    var processingInstance = new Processing(canvas, programCode); 
+  </script>
+</html>
